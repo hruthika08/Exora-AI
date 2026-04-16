@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exora AI - Telugu Voice Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap');
+        body {
+            font-family: 'General Sans', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        body.drag-active::after {
+            content: 'Drop image here';
+            position: fixed;
+            inset: 1rem;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            z-index: 100;
+            pointer-events: none;
+            border-radius: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0);
+            z-index: -1;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .typing-effect::after {
+            content: '|';
+            animation: blink 0.7s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="h-screen opacity-0 transition-opacity duration-500" id="body-content">
+
+    <!-- Starfield Canvas Background -->
+    <canvas id="blackhole-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="p-6 flex items-center justify-between border-b border-white/5">
+                <div class="flex items-center gap-2">
+                    <img src="logo.png" alt="Exora AI" class="w-8 h-8 rounded-lg">
+                    <span class="font-bold text-lg tracking-tight">EXORA AI</span>
+                </div>
+                <button id="sidebar-close" class="md:hidden p-2 text-white/60 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <button id="new-chat-btn" class="new-chat-btn">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+                New Chat
+            </button>
+
+            <div class="flex-grow overflow-y-auto px-2 scrollbar-hide" id="session-list">
+                <!-- Session items will be injected here -->
+                <div class="px-4 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Recents</div>
+            </div>
+
+            <div class="p-4 border-t border-white/5 space-y-2">
+                <div id="user-profile" class="flex items-center gap-3 p-3 glass rounded-2xl border-white/10">
+                    <div id="user-avatar" class="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-bold text-white">U</div>
+                    <div class="flex-grow">
+                        <div id="user-name" class="text-xs font-bold text-white">User</div>
+                        <div class="text-[10px] text-white/50">Free Account</div>
+                    </div>
+                </div>
+                <button id="logout-btn" class="w-full flex items-center gap-3 p-3 text-white/60 hover:text-white transition-all text-sm font-medium">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="p-4 md:p-6 flex justify-between items-center z-10">
+                <div class="flex items-center gap-3">
+                    <button id="sidebar-toggle" class="p-2 glass rounded-xl text-white/60 md:hidden">
+                        <i data-lucide="panel-left" class="w-6 h-6"></i>
+                    </button>
+                    <div class="hidden md:block text-white/60 text-sm font-medium">Telugu Assistant</div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main id="chat-container" class="w-full max-w-2xl mx-auto flex-grow overflow-y-auto pt-4 pb-32 px-4 space-y-6 scroll-smooth scrollbar-hide">
+                <div id="welcome-screen" class="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-2 animate-fade-in">
+                    <h1 class="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50 py-8 leading-relaxed overflow-visible block">
+                        హలో బాస్!
+                    </h1>
+                    <p class="text-white/40 text-xl font-medium tracking-wide">ఏం చేద్దాం? చెప్పండి!</p>
+                </div>
+                <div id="messages" class="space-y-6"></div>
+            </main>
+
+            <!-- Speaking Orb Container -->
+            <div id="orb-container" class="fixed inset-0 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-500 z-50">
+                <div id="orb" class="relative w-48 h-48 rounded-full bg-gradient-to-br from-white/20 to-white/5 shadow-[0_0_80px_rgba(255,255,255,0.2)] animate-pulse-slow">
+                    <div class="absolute inset-2 rounded-full border-4 border-white/10 blur-sm"></div>
+                    <div id="orb-inner" class="absolute inset-0 rounded-full bg-white/5 flex items-center justify-center">
+                         <div class="waveform-bar h-8 w-1 bg-white/50 rounded-full mx-1"></div>
+                         <div class="waveform-bar h-12 w-1 bg-white/50 rounded-full mx-1"></div>
+                         <div class="waveform-bar h-6 w-1 bg-white/50 rounded-full mx-1"></div>
+                         <div class="waveform-bar h-10 w-1 bg-white/50 rounded-full mx-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="absolute bottom-0 left-0 right-0 p-4 md:p-8 z-20 flex flex-col items-center pointer-events-none">
+                <!-- Image Preview Area -->
+                <div id="image-preview-container" class="hidden mb-4 p-2 glass rounded-2xl border-white/20 flex items-center gap-3 animate-fade-in pointer-events-auto">
+                    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10">
+                        <img id="image-preview" src="" alt="Preview" class="w-full h-full object-cover">
+                        <button id="remove-image" class="absolute top-0 right-0 p-1 bg-black/50 text-white hover:bg-red-500 transition-colors">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <div class="text-[10px] text-white/60 font-medium pr-2">Image attached</div>
+                </div>
+
+                <div class="w-full max-w-3xl glass p-2 rounded-3xl flex items-center gap-2 shadow-2xl transition-all border-white/10 hover:border-white/20 pointer-events-auto relative">
+                    <button id="plus-btn" class="p-4 rounded-full hover:bg-white/5 transition-all active:scale-95 group text-white/60">
+                        <i data-lucide="plus" class="w-6 h-6 group-hover:text-white"></i>
+                    </button>
+                    
+                    <!-- Options Menu -->
+                    <div id="options-menu" class="hidden absolute bottom-20 left-0 w-64 glass rounded-2xl border-white/10 shadow-2xl p-2 z-50 animate-slide-up">
+                        <button id="upload-btn" class="menu-item flex items-center gap-3 w-full p-3 hover:bg-white/5 rounded-xl transition-all text-sm font-medium text-white/80">
+                            <i data-lucide="paperclip" class="w-5 h-5 text-white/60"></i>
+                            Upload photos & files
+                        </button>
+                        <button id="take-photo-btn" class="menu-item flex items-center gap-3 w-full p-3 hover:bg-white/5 rounded-xl transition-all text-sm font-medium text-white/80">
+                            <i data-lucide="camera" class="w-5 h-5 text-white/60"></i>
+                            Take Photo
+                        </button>
+                        <button id="gen-image-btn" class="menu-item flex items-center gap-3 w-full p-3 hover:bg-white/5 rounded-xl transition-all text-sm font-medium text-white/80">
+                            <i data-lucide="sparkles" class="w-5 h-5 text-white/60"></i>
+                            Create image
+                        </button>
+                    </div>
+
+                    <input type="file" id="camera-input" accept="image/*" class="hidden">
+                    <button id="mic-btn" class="p-4 rounded-full bg-black hover:bg-gray-900 transition-all active:scale-95 group">
+                        <i data-lucide="mic" id="mic-icon" class="w-6 h-6 text-white group-hover:text-white/80"></i>
+                    </button>
+                    <input type="text" id="user-input" placeholder="చెప్పండి, ఇరగదీద్దాం..." class="bg-transparent border-none focus:outline-none flex-grow text-lg px-4 py-2 placeholder:text-white/40 text-white">
+                    <button id="send-btn" class="p-4 rounded-full bg-black hover:bg-gray-900 transition-all active:scale-95 text-white shadow-lg shadow-black/20">
+                        <i data-lucide="send" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div id="stop-btn" class="hidden mt-4 glass px-6 py-2 rounded-full text-sm font-medium hover:bg-white/10 cursor-pointer flex items-center gap-2 border border-red-500/30 text-red-400 transition-all pointer-events-auto">
+                    <i data-lucide="square" class="w-4 h-4 fill-current"></i>
+                    మాట్లాడటం ఆపు బాస్
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div id="camera-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+        <div class="relative glass max-w-lg w-full rounded-3xl overflow-hidden border-white/20 shadow-2xl animate-scale-in">
+            <div class="p-4 flex justify-between items-center border-b border-white/10">
+                <h3 class="font-bold text-white">Take Photo</h3>
+                <button id="close-camera" class="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="relative aspect-video bg-black flex items-center justify-center">
+                <video id="camera-feed" autoplay playsinline class="w-full h-full object-cover"></video>
+                <div class="absolute inset-0 pointer-events-none border-[20px] border-black/30"></div>
+                <div id="camera-loading" class="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <div class="p-6 flex justify-center bg-slate-900/50">
+                <button id="capture-btn" class="w-16 h-16 rounded-full border-4 border-white p-1 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/20">
+                    <div class="w-full h-full rounded-full bg-white"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="app.js"></script>
+    <script>
+        // Lucide initialization helper
+        window.initLucide = () => { if (window.lucide) lucide.createIcons(); };
+        window.initLucide();
+
+        // ---- Deep Space Starfield Animation ----
+        const canvas = document.getElementById('blackhole-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', () => { resizeCanvas(); initStars(); });
+
+        // --- Stars ---
+        const NUM_STARS = 280;
+        const stars = [];
+
+        function createStar() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: 0.2 + Math.random() * 1.5,
+                baseOpacity: 0.3 + Math.random() * 0.7,
+                opacity: 0,
+                twinkleSpeed: 0.005 + Math.random() * 0.02,
+                twinkleDir: Math.random() < 0.5 ? 1 : -1,
+                // Colour: mostly white/blue, some warm
+                hue: Math.random() < 0.7 ? 210 + Math.random() * 60 : 30 + Math.random() * 30,
+                sat: Math.random() < 0.5 ? 80 : 0,
+            };
+        }
+
+        function initStars() {
+            stars.length = 0;
+            for (let i = 0; i < NUM_STARS; i++) {
+                const s = createStar();
+                s.opacity = Math.random(); // random start phase
+                stars.push(s);
+            }
+        }
+        initStars();
+
+        // --- Shooting Stars ---
+        const shooters = [];
+        function spawnShooter() {
+            shooters.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height * 0.5,
+                len: 80 + Math.random() * 120,
+                speed: 6 + Math.random() * 8,
+                angle: Math.PI / 6 + Math.random() * 0.4,
+                opacity: 1,
+                life: 1,
+            });
+        }
+        setInterval(spawnShooter, 3500 + Math.random() * 3000);
+
+        // --- Nebula blobs (static, painted once per resize) ---
+        let nebulaCanvas;
+        function buildNebula() {
+            nebulaCanvas = document.createElement('canvas');
+            nebulaCanvas.width  = canvas.width;
+            nebulaCanvas.height = canvas.height;
+            const nc = nebulaCanvas.getContext('2d');
+
+            const blobs = [
+                { x: canvas.width * 0.15, y: canvas.height * 0.3,  r: 280, hue: 220, a: 0.06 },
+                { x: canvas.width * 0.8,  y: canvas.height * 0.6,  r: 200, hue: 270, a: 0.05 },
+                { x: canvas.width * 0.5,  y: canvas.height * 0.85, r: 320, hue: 200, a: 0.07 },
+            ];
+            blobs.forEach(b => {
+                const g = nc.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+                g.addColorStop(0,   `hsla(${b.hue},80%,55%,${b.a})`);
+                g.addColorStop(0.5, `hsla(${b.hue},70%,40%,${b.a * 0.4})`);
+                g.addColorStop(1,   'hsla(0,0%,0%,0)');
+                nc.fillStyle = g;
+                nc.beginPath();
+                nc.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                nc.fill();
+            });
+        }
+        buildNebula();
+        window.addEventListener('resize', buildNebula);
+
+        // --- Draw Loop ---
+        function drawSpace() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Nebula layer
+            ctx.drawImage(nebulaCanvas, 0, 0);
+
+            // Twinkling stars
+            for (const s of stars) {
+                s.opacity += s.twinkleSpeed * s.twinkleDir;
+                if (s.opacity >= s.baseOpacity) { s.opacity = s.baseOpacity; s.twinkleDir = -1; }
+                if (s.opacity <= 0.05)          { s.opacity = 0.05;          s.twinkleDir =  1; }
+
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${s.hue}, ${s.sat}%, 95%, ${s.opacity})`;
+                ctx.fill();
+
+                // Soft glow for brighter stars
+                if (s.radius > 1 && s.opacity > 0.5) {
+                    const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.radius * 6);
+                    glow.addColorStop(0,   `hsla(${s.hue}, 80%, 90%, ${s.opacity * 0.3})`);
+                    glow.addColorStop(1,   'hsla(0,0%,0%,0)');
+                    ctx.fillStyle = glow;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.radius * 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Shooting stars
+            for (let i = shooters.length - 1; i >= 0; i--) {
+                const sh = shooters[i];
+                sh.x    += Math.cos(sh.angle) * sh.speed;
+                sh.y    += Math.sin(sh.angle) * sh.speed;
+                sh.life -= 0.018;
+                if (sh.life <= 0) { shooters.splice(i, 1); continue; }
+
+                const tx = sh.x - Math.cos(sh.angle) * sh.len;
+                const ty = sh.y - Math.sin(sh.angle) * sh.len;
+                const grad = ctx.createLinearGradient(tx, ty, sh.x, sh.y);
+                grad.addColorStop(0,   'rgba(255,255,255,0)');
+                grad.addColorStop(1,   `rgba(255,255,255,${sh.life * 0.9})`);
+                ctx.strokeStyle = grad;
+                ctx.lineWidth   = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(tx, ty);
+                ctx.lineTo(sh.x, sh.y);
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(drawSpace);
+        }
+        drawSpace();
+    </script>
+</body>
+</html>

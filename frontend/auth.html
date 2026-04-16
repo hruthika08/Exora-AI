@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exora AI - Login / Signup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap');
+        body {
+            font-family: 'General Sans', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            overflow: hidden;
+        }
+        .star-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .auth-container {
+            z-index: 10;
+            position: relative;
+        }
+        .auth-form {
+            background: rgba(255, 255, 255, 0.03) !important;
+            backdrop-filter: blur(25px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.8) !important;
+        }
+        .auth-input {
+            background: rgba(255, 255, 255, 0.02) !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+        .social-btn {
+            background: rgba(255, 255, 255, 0.02) !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+        .btn-primary {
+            background: #FFFFFF !important;
+            color: #000000 !important;
+            box-shadow: 0 15px 30px -5px rgba(255, 255, 255, 0.2) !important;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <canvas id="starfield" class="star-canvas"></canvas>
+
+    <div class="auth-container">
+        <!-- Logo/Header -->
+        <div class="text-center mb-8 animate-fade-in">
+            <div class="flex items-center justify-center gap-3 mb-2">
+                <img src="logo.png" alt="Exora AI" class="w-12 h-12 rounded-xl shadow-lg border border-white/20">
+                <span class="text-2xl font-bold tracking-tight">EXORA AI</span>
+            </div>
+            <p class="text-white/60">Premium AI Telugu Assistant</p>
+        </div>
+
+        <div class="auth-card relative">
+            <!-- Login Form -->
+            <div id="login-view" class="auth-form transition-all duration-500 opacity-100 scale-100">
+                <h2 class="text-2xl font-bold mb-6 text-center">Welcome Back</h2>
+                
+                <form id="login-form" class="space-y-4">
+                    <div class="input-group">
+                        <i data-lucide="mail" class="input-icon w-5 h-5"></i>
+                        <input type="email" id="login-email" placeholder="Email Address" required class="auth-input">
+                    </div>
+
+                    <div class="input-group">
+                        <i data-lucide="lock" class="input-icon w-5 h-5"></i>
+                        <input type="password" id="login-password" placeholder="Password" required class="auth-input">
+                        <button type="button" class="password-toggle" onclick="togglePassword('login-password')">
+                            <i data-lucide="eye" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between text-sm">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="remember-me" class="rounded border-white/10 bg-white/5 text-white focus:ring-white">
+                            <span class="text-white/60">Remember me</span>
+                        </label>
+                        <a href="#" class="text-white hover:underline font-medium">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit" class="btn-primary mt-4 flex items-center justify-center gap-2">
+                        <span id="login-btn-text">Sign In</span>
+                        <div id="login-spinner" class="loading-spinner hidden"></div>
+                    </button>
+                </form>
+
+                <div class="divider">Or continue with</div>
+
+                <div class="flex gap-4">
+                    <button class="social-btn" onclick="socialLogin('google')">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c3.11 0 5.71-1.01 7.61-2.74l-3.57-2.77c-1.01.69-2.31 1.05-4.04 1.05-3.11 0-5.74-1.92-6.68-4.51H1.72v2.85C3.72 20.84 7.6 23 12 23z" fill="#34A853"/>
+                            <path d="M5.32 14.02c-.24-.72-.38-1.49-.38-2.3S5.08 10.1 5.32 9.38V6.53H1.72C.92 8.12.5 9.97.5 12s.42 3.88 1.22 5.47l3.6-2.85z" fill="#FBBC05"/>
+                            <path d="M12 4.95c1.69 0 3.21.58 4.41 1.72l3.31-3.31C17.71 1.05 15.11 0 12 0 7.6 0 3.72 2.16 1.72 5.79l3.6 2.85C6.26 6.87 8.89 4.95 12 4.95z" fill="#EA4335"/>
+                        </svg>
+                        Google
+                    </button>
+                    <button class="social-btn" onclick="socialLogin('github')">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                        </svg>
+                        GitHub
+                    </button>
+                </div>
+
+                <p class="mt-8 text-center text-white/60 text-sm">
+                    Don't have an account? 
+                    <button onclick="switchView('signup')" class="text-white hover:underline font-bold ml-1">Sign Up</button>
+                </p>
+            </div>
+
+            <!-- Signup Form (Hidden by default) -->
+            <div id="signup-view" class="auth-form transition-all duration-500 opacity-0 scale-95 hidden pointer-events-none">
+                <h2 class="text-2xl font-bold mb-6 text-center">Create Account</h2>
+                
+                <!-- Signup Toggle (Email vs Phone) -->
+                <div class="flex p-1 bg-white/5 rounded-xl mb-6">
+                    <button id="toggle-email" onclick="switchSignupMethod('email')" class="flex-1 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 shadow-sm">Email</button>
+                    <button id="toggle-phone" onclick="switchSignupMethod('phone')" class="flex-1 py-2 rounded-lg text-sm font-medium transition-all text-slate-400">Phone</button>
+                </div>
+
+                <form id="signup-form" class="space-y-4">
+                    <div id="email-fields">
+                        <div class="input-group">
+                            <i data-lucide="user" class="input-icon w-5 h-5"></i>
+                            <input type="text" id="signup-name" placeholder="Full Name" required class="auth-input">
+                        </div>
+                        <div class="input-group mt-4">
+                            <i data-lucide="mail" class="input-icon w-5 h-5"></i>
+                            <input type="email" id="signup-email" placeholder="Email Address" required class="auth-input">
+                        </div>
+                        <div class="input-group mt-4">
+                            <i data-lucide="lock" class="input-icon w-5 h-5"></i>
+                            <input type="password" id="signup-password" placeholder="Password" required class="auth-input">
+                            <button type="button" class="password-toggle" onclick="togglePassword('signup-password')">
+                                <i data-lucide="eye" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="phone-fields" class="hidden">
+                        <div class="input-group">
+                            <i data-lucide="phone" class="input-icon w-5 h-5"></i>
+                            <input type="tel" id="signup-phone" placeholder="+1234567890" class="auth-input">
+                        </div>
+                        <p class="text-xs text-slate-500 px-2 italic">An OTP will be sent to your phone number.</p>
+                    </div>
+
+                    <button type="submit" class="btn-primary mt-6 flex items-center justify-center gap-2">
+                        <span id="signup-btn-text">Create Account</span>
+                        <div id="signup-spinner" class="loading-spinner hidden"></div>
+                    </button>
+                </form>
+
+                <p class="mt-8 text-center text-white/60 text-sm">
+                    Already have an account? 
+                    <button onclick="switchView('login')" class="text-white hover:underline font-bold ml-1">Sign In</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="flex items-center gap-3">
+            <i id="toast-icon" data-lucide="info" class="w-5 h-5"></i>
+            <span id="toast-message"></span>
+        </div>
+    </div>
+
+    <script type="module" src="auth.js"></script>
+    <script>
+        // Inline helpers for quick UI response
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            const icon = input.parentElement.querySelector('.password-toggle i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        function switchView(view) {
+            const loginView = document.getElementById('login-view');
+            const signupView = document.getElementById('signup-view');
+            
+            if (view === 'signup') {
+                loginView.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                setTimeout(() => {
+                    loginView.classList.add('hidden');
+                    signupView.classList.remove('hidden');
+                    setTimeout(() => {
+                        signupView.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+                    }, 50);
+                }, 500);
+            } else {
+                signupView.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                setTimeout(() => {
+                    signupView.classList.add('hidden');
+                    loginView.classList.remove('hidden');
+                    setTimeout(() => {
+                        loginView.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+                    }, 50);
+                }, 500);
+            }
+        }
+
+        function switchSignupMethod(method) {
+            const emailFields = document.getElementById('email-fields');
+            const phoneFields = document.getElementById('phone-fields');
+            const tEmail = document.getElementById('toggle-email');
+            const tPhone = document.getElementById('toggle-phone');
+            const btnText = document.getElementById('signup-btn-text');
+
+            if (method === 'email') {
+                emailFields.classList.remove('hidden');
+                phoneFields.classList.add('hidden');
+                tEmail.classList.add('bg-white/10', 'shadow-sm');
+                tEmail.classList.remove('text-slate-400');
+                tPhone.classList.remove('bg-white/10', 'shadow-sm');
+                tPhone.classList.add('text-slate-400');
+                btnText.textContent = 'Create Account';
+            } else {
+                emailFields.classList.add('hidden');
+                phoneFields.classList.remove('hidden');
+                tPhone.classList.add('bg-white/10', 'shadow-sm');
+                tPhone.classList.remove('text-slate-400');
+                tEmail.classList.remove('bg-white/10', 'shadow-sm');
+                tEmail.classList.add('text-slate-400');
+                btnText.textContent = 'Send OTP';
+            }
+        }
+
+        // --- Starfield Animation ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', () => { resizeCanvas(); initStars(); });
+
+        const NUM_STARS = 200;
+        const stars = [];
+
+        function initStars() {
+            stars.length = 0;
+            for (let i = 0; i < NUM_STARS; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 1.5,
+                    o: Math.random(),
+                    v: 0.005 + Math.random() * 0.015,
+                    d: Math.random() < 0.5 ? 1 : -1
+                });
+            }
+        }
+        initStars();
+
+        function drawStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const s of stars) {
+                s.o += s.v * s.d;
+                if (s.o >= 1) s.d = -1;
+                if (s.o <= 0.2) s.d = 1;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${s.o * 0.8})`;
+                ctx.fill();
+            }
+            requestAnimationFrame(drawStars);
+        }
+        drawStars();
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
